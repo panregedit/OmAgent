@@ -67,7 +67,7 @@ class BaseWorker(BotBase, ABC):
         """Run the Node."""
 
     def execute(self, task: Task) -> TaskResult:
-        task_input = {}
+        task_input = {'workflow_instance_id': task.workflow_instance_id}
         task_output = None
         task_result: TaskResult = self.get_task_result_from_task(task)
 
@@ -80,6 +80,8 @@ class BaseWorker(BotBase, ABC):
             else:
                 params = inspect.signature(self._run).parameters
                 for input_name in params:
+                    if input_name == 'workflow_instance_id':
+                        continue
                     typ = params[input_name].annotation
                     default_value = params[input_name].default
                     if input_name in task.input_data:
@@ -105,11 +107,12 @@ class BaseWorker(BotBase, ABC):
                     # 创建任务并等待完成
                     task_output = loop.run_until_complete(
                         asyncio.gather(
-                            self._run(workflow_instance_id=task.workflow_instance_id, **task_input),
+                            self._run(**task_input),
                             return_exceptions=True
                         )
                     )[0]  # gather 返回列表，我们取第一个结果
-
+                else:
+                    task_output = self._run(**task_input)
             if type(task_output) == TaskResult:
                 task_output.task_id = task.task_id
                 task_output.workflow_instance_id = task.workflow_instance_id

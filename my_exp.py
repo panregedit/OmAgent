@@ -7,6 +7,9 @@ from omagent_core.engine.workflow.executor.workflow_executor import WorkflowExec
 from omagent_core.engine.automator.task_handler import TaskHandler
 from omagent_core.engine.configuration.configuration import Configuration
 from omagent_core.engine.http.models import StartWorkflowRequest
+from omagent_core.clients.base.redis_stream_listener import RedisStreamListener
+from omagent_core.clients.base.callback import AppCallback
+from omagent_core.clients.base.callback import MessageType, InteractionType
 from time import sleep
 import asyncio
 from logging import Logger
@@ -32,9 +35,18 @@ from omagent_core.utils.registry import registry
 # 创建Node的运行逻辑，类型为worker，实现一个_run方法。 workflow_instance_id 就是workflow实例的唯一ID,从BaseWorker的execute的参数task里面可以获取，这儿还没想好怎么传进来
 @registry.register_worker()
 class SimpleWorker(BaseWorker):
-    def _run(self, my_name:str, *args, **kwargs):
+    def _run(self, workflow_instance_id:str, my_name:str):
         print(22222222, my_name)
-        return {'worker_style': 'class', 'secret_number': 1234, 'is_it_true': False}
+        print(f"Workflow Execution ID: {workflow_instance_id}")
+        callback = AppCallback()
+        callback.info(agent_id=workflow_instance_id, progress="SimpleWorker", message='running ...')
+        callback.send_block(agent_id=workflow_instance_id, took=0, msg_type=MessageType.IMAGE_URL.value, msg='https://studio.linker.cc/studioimage/om-studio/31931/661cfcc7b339201b62a64b0d.jpg')
+        sleep(1)
+        callback.send_block(agent_id=workflow_instance_id, took=0, msg_type=MessageType.TEXT.value, msg='这是一张大火的图片')
+
+        callback.send_incomplete(agent_id=workflow_instance_id, took=0, msg_type=MessageType.TEXT.value, msg='图文混合的开始，后面将会跟着一张图片')
+        callback.send_incomplete(agent_id=workflow_instance_id, took=0, msg_type=MessageType.IMAGE_URL.value, msg='https://studio.linker.cc/studioimage/om-studio/31931/661cfcc8b339201b62a64b21.jpg')
+        callback.send_block(agent_id=workflow_instance_id, took=0, msg_type=MessageType.TEXT.value, msg='这是一张房间的图片')
     
 @registry.register_worker()
 class SimpleWorker2(BaseWorker):
@@ -45,14 +57,23 @@ class SimpleWorker2(BaseWorker):
     
 @registry.register_worker()
 class SimpleWorker3(BaseWorker):
-    def _run(self, *args, **kwargs):
+    def _run(self, workflow_instance_id:str, output:dict):
+        print(f"Workflow Execution ID: {workflow_instance_id}")
+        print("收到上一级任务数据：", output)
         print('switch 1 !!!')
+        callback = AppCallback()
+        callback.info(agent_id=workflow_instance_id, progress="SimpleWorker3", message='running step 1...')
+        callback.send_incomplete(agent_id=workflow_instance_id, took=0, msg_type=MessageType.TEXT.value, msg='正在')
+        callback.send_incomplete(agent_id=workflow_instance_id, took=0, msg_type=MessageType.TEXT.value, msg='处理中...')
+        callback.send_block(agent_id=workflow_instance_id, took=0, msg_type=MessageType.TEXT.value, msg='switch 1 !!!')
+        callback.info(agent_id=workflow_instance_id, progress="SimpleWorker3", message='running step 2...')
         return {'switch_case_value': 1}
     
 @registry.register_worker()
 class SimpleWorker4(BaseWorker):
-    async def _run(self, *args, **kwargs):
+    async def _run(self, workflow_instance_id, *args, **kwargs):
         # 创建多个并发任务
+        print("SimpleWorker4", workflow_instance_id)
         async def count_task(i):
             await asyncio.sleep(1)
             print(f'Task {i} completed!')
@@ -63,6 +84,14 @@ class SimpleWorker4(BaseWorker):
         print('All tasks completed:', results)
         return {'me': 10086, 'results': results}
     
+
+@registry.register_worker()
+class SimpleWorker0(BaseWorker):
+    def _run(self, workflow_instance_id:str):
+        callback = AppCallback()
+        callback.info(agent_id=workflow_instance_id, progress="SimpleWorker0", message='start ...')
+        callback.send_block(agent_id=workflow_instance_id, took=0, msg_type=MessageType.TEXT.value, msg="我能为您做什么?", interaction_type=InteractionType.INPUT.value)
+        return {'me': 10086}
 
 # api_config = Configuration(base_url="http://0.0.0.0:8080")
 # http://36.133.246.107:21964/workflowDef/my_exp    #这个是conductor的UI地址
@@ -75,7 +104,7 @@ task_handler.start_processes()  #启动worker，监听conductor的消息
 
 
 
-workflow = ConductorWorkflow(name='my_exp') #初始化workflow， 代码暂时需要在 CMCC-11 上跑
+workflow = ConductorWorkflow(name='my_exp2') #初始化workflow， 代码暂时需要在 CMCC-11 上跑
 
 task = SimpleTask(task_def_name='SimpleWorker', task_reference_name='ref_name') #初始化task，也就是节点。task_def_name 绑定worker的类名
 task.input_parameters.update({'my_name': workflow.input('my_name')})    #设置node的输入值
@@ -83,11 +112,14 @@ task2 = SimpleTask(task_def_name='SimpleWorker2', task_reference_name='ref_name2
 task2.input_parameters.update({ 'secret_number': task.output('secret_number'), 'is_it_true':task.output('is_it_true')})
 task3 = SimpleTask(task_def_name='SimpleWorker3', task_reference_name='ref_name3')
 task4 = SimpleTask(task_def_name='SimpleWorker4', task_reference_name='ref_name4')
+task5 = SimpleTask(task_def_name='RedisStreamListener', task_reference_name='ref_name5')
+task3.input_parameters.update({ 'output': task5.output('output')})
+task0 = SimpleTask(task_def_name='SimpleWorker0', task_reference_name='ref_name0')
 # switch_task = SwitchTask(task_ref_name='switch_1', case_expression=task3.output('switch_case_value'))
 # switch_task.switch_case(1, task)
 # switch_task.switch_case(2, task2)
 
-workflow >> task4 #>> task3 >> {1 : task , 2 : task2} #设定workflow的运行顺序，>>是下一个节点，字典是分支，字典前面的一个节点需要在返回参数里包含一个 switch_case_value 字段，来指示走哪个分支
+workflow >> task0 >> task5 >>task3 >> {1 : task , 2 : task2} #设定workflow的运行顺序，>>是下一个节点，字典是分支，字典前面的一个节点需要在返回参数里包含一个 switch_case_value 字段，来指示走哪个分支
 register_res = workflow.register(True)  #工作流注册到conductor
 print(3333333333333, register_res)
 
