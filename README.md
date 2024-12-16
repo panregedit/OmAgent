@@ -48,10 +48,11 @@ In conclusion, key features of OmAgent include:
 OmAgent utilizes [Conductor](https://github.com/conductor-oss/conductor) as its workflow orchestration engine. Conductor is an open-source, distributed, and scalable workflow engine that supports a variety of programming languages and frameworks. By default, it uses Redis for persistence and Elasticsearch (7.x) as the indexing backend.  
 It is recommended to deploy Conductor using Docker:
 ```bash
-docker compose -f docker/conductor/docker-compose.yml up -d
+docker-compose -f docker/conductor/docker-compose.yml up -d
 ```
 - Once deployed, you can access the Conductor UI at `http://localhost:5001`. (Note: Mac system will occupy port 5000 by default, so we use 5001 here. You can specify other ports when deploying Conductor.)
 - The Conductor API can be accessed via `http://localhost:8080`.
+- More details about the deployment can be found [here](docker/README.md).
 
 ### 2. Install OmAgent  
 - **Python Version**: Ensure Python 3.10 or higher is installed.
@@ -67,6 +68,17 @@ docker compose -f docker/conductor/docker-compose.yml up -d
 - **Install Optional Components**: 
   - Install Milvus VectorDB for enhanced support of long-term memory.
 OmAgent uses Milvus Lite as the default vector database for storing vector data related to long-term memory. To utilize the full Milvus service, you may deploy the [Milvus vector database](https://milvus.io/docs/install_standalone-docker.md) via Docker.
+  - Pull git lfs files.
+We provide sample image files for our examples in the `examples/step4_outfit_with_ltm/wardrobe_images` directory. To use them, ensure Git LFS is installed. You can install it with the following command:
+      ```bash
+      git lfs install
+      ```
+      Then, pull the files by executing:
+      ```bash
+      git lfs pull
+      ```
+  
+
 
 ### 3. Connect Devices  
 If you wish to use smart devices to access your agents, we provide a smartphone app and corresponding backend, allowing you to focus on agent functionality without worrying about complex device connection issues.  
@@ -74,6 +86,7 @@ If you wish to use smart devices to access your agents, we provide a smartphone 
     The APP backend comprises the backend program, along with two middleware components: the MySQL database and MinIO object storage. For installation and deployment instructions, please refer to [this link](docs/concepts/app_backend.md).
 - **Download, install, and debug the smartphone app**  
   At present, we offer an Android APP available for download and testing. For detailed instructions on acquiring and using it, please refer to [here](docs/concepts/app.md). The iOS version is currently under development and will be available soon.
+
 
 ## 🚀 Quick Start 
 ### Hello World
@@ -103,7 +116,25 @@ The container.yaml file is a configuration file that manages dependencies and se
    - Update the Conductor server URL under conductor_config section
    - Adjust any other component settings as needed
 
-4. Websearch uses duckduckgo by default. For better results, it is recommended to configure [Bing Search](https://www.microsoft.com/en-us/bing/apis/pricing) by modifying the `configs/tools/websearch.yml` file and setting the `bing_api_key`.
+4. Websearch gives multiple providers, you can choose one of them by modifying the `configs/tools/all_tools.yml` file.
+   1. [**Recommend**] Use Tavily as the websearch tool, `all_tools.yml` file should be like this:
+   ```yaml
+   llm: ${sub|text_res}
+   tools:
+       - ...other tools...
+       - name: TavilyWebSearch
+         tavily_api_key: ${env|tavily_api_key, null}
+   ```
+   You can get the `tavily_api_key` from [here](https://app.tavily.com/home). It start with `tvly-xxx`. By setting the `tavily_api_key`, you can get better search results.
+   2. Use bing search or duckduckgo search, `all_tools.yml` file should be like this:
+   ```yaml
+   llm: ${sub|text_res}
+   tools:
+       - ...other tools...
+       - name: WebSearch
+         bing_api_key: ${env|bing_api_key, null}
+   ```
+   For better results, it is recommended to configure [Bing Search](https://www.microsoft.com/en-us/bing/apis/pricing) setting the `bing_api_key`.
 
 For more information about the container.yaml configuration, please refer to the [container module](./docs/concepts/container.md)
 
@@ -122,8 +153,8 @@ For more information about the container.yaml configuration, please refer to the
    cd examples/step2_outfit_with_switch
    python run_app.py
    ```
-
-   For the connection and usage of the OmAgent app, please refer to the [app usage documentation](./docs/concepts/app.md)
+   For app backend deployment, please refer to [here](docker/README.md)  
+   For the connection and usage of the OmAgent app, please check [app usage documentation](./docs/concepts/app.md)
 
 
 ## 🏗 Architecture
@@ -162,18 +193,17 @@ For a deeper comprehension of OmAgent, let us elucidate key terms:
 ## Examples
 We provide exemplary projects to demonstrate the construction of intelligent agents using OmAgent. You can find a comprehensive list in the [examples](./examples/) directory. Here is the reference sequence:
 
-1. [step1_simpleVQA](./examples/step1_simpleVQA) illustrates the creation of a simple multimodal VQA agent with OmAgent. Detailed tutorial can be found [here](docs/examples/simple_qa.md).
+1. [step1_simpleVQA](./examples/step1_simpleVQA) illustrates the creation of a simple multimodal VQA agent with OmAgent. 
 
-2. [step2_outfit_with_switch](./examples/step2_outfit_with_switch) demonstrates how to build an agent with switch-case branches using OmAgent. Detailed tutorial can be found [here](docs/examples/outfit_with_switch.md).
+2. [step2_outfit_with_switch](./examples/step2_outfit_with_switch) demonstrates how to build an agent with switch-case branches using OmAgent. 
 
-3. [step3_outfit_with_loop](./examples/step3_outfit_with_loop) shows the construction of an agent incorporating loops using OmAgent. Detailed tutorial can be found [here](docs/examples/outfit_with_loop.md).
+3. [step3_outfit_with_loop](./examples/step3_outfit_with_loop) shows the construction of an agent incorporating loops using OmAgent. 
 
-4. [step4_outfit_with_ltm](./examples/step4_outfit_with_ltm) exemplifies using OmAgent to create an agent equipped with long-term memory. Detailed tutorial can be found [here](docs/examples/outfit_with_ltm.md).
+4. [step4_outfit_with_ltm](./examples/step4_outfit_with_ltm) exemplifies using OmAgent to create an agent equipped with long-term memory. 
 
-5. [dnc_loop](./examples/general_dnc) demonstrates the development of an agent utilizing the DnC algorithm to tackle complex problems. Detailed tutorial can be found [here](docs/examples/dnc_loop.md).
+5. [dnc_loop](./examples/general_dnc) demonstrates the development of an agent utilizing the DnC algorithm to tackle complex problems. 
 
-6. [video_understanding](./examples/video_understanding) showcases the creation of a video understanding agent for interpreting video content using OmAgent. Detailed tutorial can be found [here](docs/examples/video_understanding.md).
-
+6. [video_understanding](./examples/video_understanding) showcases the creation of a video understanding agent for interpreting video content using OmAgent. 
 
 ## API Documentation
 The API documentation is available [here](https://om-ai-lab.github.io/OmAgentDocs/).
@@ -197,6 +227,16 @@ If you find our repository beneficial, please cite our paper:
   year={2024}
 }
 ```
+
+## Third-Party Dependencies
+
+This project includes code from the following third-party projects:
+
+- **conductor-python**  
+  - License: Apache License 2.0
+  - [Link to Project](https://github.com/conductor-sdk/conductor-python)
+  - [Link to License](http://www.apache.org/licenses/LICENSE-2.0)
+
 
 ## Star History
 [![Star History Chart](https://api.star-history.com/svg?repos=om-ai-lab/OmAgent&type=Date)](https://star-history.com/#om-ai-lab/OmAgent&Date)

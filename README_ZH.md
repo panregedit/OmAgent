@@ -50,6 +50,7 @@ docker compose -f docker/conductor/docker-compose.yml up -d
 ```
 - 部署完成后可以通过访问 `http://localhost:5001` 访问Conductor UI。（注：Mac系统默认会占用5000端口，因此我们使用5001端口，你可以在部署Conductor的时候指定其它端口。）
 - 通过 `http://localhost:8080` 调用Conductor API。
+- 更多部署细节请参考 [这里](docker/README.md)
 
 ### 2. 安装OmAgent  
 - **Python 版本**: 确保已安装 Python 3.10 或更高版本。
@@ -118,7 +119,7 @@ docker compose -f docker/conductor/docker-compose.yml up -d
    cd examples/step2_outfit_with_switch
    python run_app.py
    ```
-
+   部署app后端服务请参考 [这里](docker/README.md)  
    OmAgent 的 app 的连接和使用方式请参考 [app使用文档](./docs/concepts/app.md)
 
 ## 🏗 架构
@@ -155,12 +156,12 @@ OmAgent的设计架构遵循三项基本原则：
 ### 示例项目
 
 我们提供了一些示例项目来展示如何使用OmAgent构建智能智能体程序。您可以在 [examples](./examples/) 目录中找到完整的示例列表。以下是参考顺序：
-1. [step1_simpleVQA](./examples/step1_simpleVQA) 展示了如何使用OmAgent构建一个简单的多模态VQA智能体。[文档](docs/examples/simple_qa.md)  
-2. [step2_outfit_with_switch](./examples/step2_outfit_with_switch) 展示了如何使用OmAgent构建一个带有switch-case分支的智能体。[文档](docs/examples/outfit_with_switch.md)  
-3. [step3_outfit_with_loop](./examples/step3_outfit_with_loop) 展示了如何使用OmAgent构建一个带有循环的智能体。[文档](docs/examples/outfit_with_loop.md)  
-4. [step4_outfit_with_ltm](./examples/step4_outfit_with_ltm) 展示了如何使用OmAgent构建一个带有长期记忆的智能体。[文档](docs/examples/outfit_with_ltm.md)  
-5. [dnc_loop](./examples/dnc_loop) 展示了如何使用OmAgent构建一个使用DnC算法的智能体，用于解决通用性的复杂问题。[文档](docs/examples/dnc_loop.md)  
-6. [video_understanding](./examples/video_understanding) 展示了如何使用OmAgent构建一个视频理解智能体，用于理解视频内容。[文档](docs/examples/video_understanding.md)  
+1. [step1_simpleVQA](./examples/step1_simpleVQA) 展示了如何使用OmAgent构建一个简单的多模态VQA智能体。
+2. [step2_outfit_with_switch](./examples/step2_outfit_with_switch) 展示了如何使用OmAgent构建一个带有switch-case分支的智能体。md)  
+3. [step3_outfit_with_loop](./examples/step3_outfit_with_loop) 展示了如何使用OmAgent构建一个带有循环的智能体。
+4. [step4_outfit_with_ltm](./examples/step4_outfit_with_ltm) 展示了如何使用OmAgent构建一个带有长期记忆的智能体。
+5. [dnc_loop](./examples/dnc_loop) 展示了如何使用OmAgent构建一个使用DnC算法的智能体，用于解决通用性的复杂问题。
+6. [video_understanding](./examples/video_understanding) 展示了如何使用OmAgent构建一个视频理解智能体，用于理解视频内容。
 
 
 ## API 文档
@@ -186,6 +187,16 @@ OmAgent的设计架构遵循三项基本原则：
   year={2024}
 }
 ```
+
+## 第三方依赖
+
+本项目包含以下第三方项目的代码：
+
+- **conductor-python**  
+  - 许可证: Apache License 2.0
+  - [项目链接](https://github.com/conductor-sdk/conductor-python)
+  - [许可证链接](http://www.apache.org/licenses/LICENSE-2.0)
+
 
 ## Star History
 [![Star History Chart](https://api.star-history.com/svg?repos=om-ai-lab/OmAgent&type=Date)](https://star-history.com/#om-ai-lab/OmAgent&Date)
