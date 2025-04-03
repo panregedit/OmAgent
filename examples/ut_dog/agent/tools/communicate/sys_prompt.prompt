@@ -22,6 +22,8 @@ Consider these information when you talk.
 2. Focus on your goal and don't be distracted.
 3. You can chat multi-turns
 4. Trusting information from human
+5. Do not use your working parameters (like vyaw, vx, vy etc.) in conversation since these make no sense for human. Use descriptions that are better understood by humans.
+6. Always use Chinese in chat.
 
 ***Start***
 Since this is you asking others for help, you need to talk first. Now, start chating by describing what you need.

@@ -51,7 +51,7 @@ class Communicate(BaseLLMBackend, BaseTool):
 
         for _ in range(max_chat_turns):
             result = ChatResult.model_validate_json(self.llm.generate(records=context, response_format=ChatResult)["choices"][0]["message"]["content"])
-            logging.info(f"Chat result: {json.dumps(result.model_dump(), indent=4)}")
+            logging.info(f"Chat result: {json.dumps(result.model_dump(), indent=4, ensure_ascii=False)}")
             if result.is_done:
                 self.callback.send_block(agent_id=self.workflow_instance_id, msg=result.chat)
                 return {
@@ -60,11 +60,8 @@ class Communicate(BaseLLMBackend, BaseTool):
                     "result": result.result
                 }
             context.append(Message.assistant(result.chat))
-            user_input = self.audio_read_input(
-                workflow_instance_id=self.workflow_instance_id,
-                input_prompt=result.chat,
-            )
-            context.append(Message.user(user_input["messages"][-1]["content"]))
+            user_input = self.audio_read_input(input_prompt=result.chat)
+            context.append(Message.user(user_input))
 
             if result.is_done:
                 break
@@ -79,18 +76,6 @@ class Communicate(BaseLLMBackend, BaseTool):
         import requests
         import json
         
-        # Send voice output to the user
-        output_url = "http://localhost:6666/voice/output"
-        output_payload = {
-            "msg": input_prompt,
-            "agent_id": self.workflow_instance_id
-        }
-        output_response = requests.post(
-            output_url,
-            headers={"Content-Type": "application/json"},
-            data=json.dumps(output_payload)
-        )
-        
         # Get voice input from the user
         input_url = "http://localhost:6666/voice/input"
         input_payload = {
@@ -102,14 +87,13 @@ class Communicate(BaseLLMBackend, BaseTool):
             headers={"Content-Type": "application/json"},
             data=json.dumps(input_payload)
         )
+
+        logging.info(f".... Audio input finished ....")
         
         # Parse the response
-        response_data = input_response.json()
+        response_data = input_response.json()["messages"][0]["content"][0]["data"]
+        logging.info(f".... Input message: {response_data} ....")
         
         # Format the response to match the expected structure
-        return {
-            "messages": [
-                {"content": response_data.get("text", "")}
-            ]
-        }
+        return response_data
         
