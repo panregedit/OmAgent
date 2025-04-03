@@ -3,15 +3,13 @@ import json
 from pydantic import BaseModel, Field
 from typing import List
 from omagent_core.engine.worker.base import BaseWorker
-from omagent_core.utils.general import read_image
 from omagent_core.utils.logger import logging
 from omagent_core.utils.registry import registry
 from omagent_core.models.llms.base import BaseLLMBackend
 from omagent_core.models.llms.schemas import Message
-from agent.tools.move import Move
-from agent.tools.get_image_sample import GetImageSample
+from omagent_core.tool_system.manager import ToolManager
+from omagent_core.models.llms.prompt.prompt import PromptTemplate
 from agent.schemas.note import Note, Step
-from time import sleep
 from agent.tools.get_surrounding_image import GetSurroundingImage
 
 CURRENT_PATH = Path(__file__).parents[0]
@@ -28,6 +26,8 @@ class Note4gen(BaseModel):
 
 @registry.register_worker()
 class Planning(BaseLLMBackend, BaseWorker):
+    tool_manager: ToolManager
+
     def _run(self, *args, **kwargs):
         # Read user input through configured input interface
         user_input = self.input.read_input(
@@ -51,8 +51,8 @@ class Planning(BaseLLMBackend, BaseWorker):
             raise Exception(res['result'])
         vision_states = res['vision_states']
 
-        with open(CURRENT_PATH.joinpath("sys_prompt.prompt"), "r") as f:
-            system_prompt = f.read()
+        sys_prompt = PromptTemplate.from_file(CURRENT_PATH.joinpath("sys_prompt.prompt"))
+        sys_prompt = sys_prompt.format(tools=self.tool_manager.generate_prompt())
 
         user_prompt = [f"The user's instruction is:{user_instruction}", "The environment around you and the corresponding vyaw value are as follows:"]
         for item in vision_states:
@@ -62,7 +62,7 @@ class Planning(BaseLLMBackend, BaseWorker):
             ])
 
         result = self.llm.generate(records=[
-            Message.system(system_prompt),
+            Message.system(sys_prompt),
             Message.user(user_prompt)],
             response_format=Note4gen
             )

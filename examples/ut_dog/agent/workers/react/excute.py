@@ -10,11 +10,20 @@ from pydantic import BaseModel, Field
 from agent.schemas.note import Note, Step
 from time import sleep
 
+def move_forward(distance:float):
+    print(f"Moving forward {distance} meters")
+
+def turn_degrees(angle:float):
+    print(f"Turning {angle} degrees")
+
+
+
+
 CURRENT_PATH = Path(__file__).parents[0]
 
 class ObservationResult(BaseModel):
     observation: str = Field(description="The observation of the task")
-    reason: str = Field(description="Criteria for determining whether a task is completed")
+    reason: str = Field(description="The basis for judging whether a task has been completed. Please think step by step.")
     is_done: bool = Field(description="Whether the task is done")
 
 @registry.register_worker()
@@ -47,7 +56,7 @@ class ReactExcute(BaseLLMBackend, BaseWorker):
             self.callback.send_block(agent_id=self.workflow_instance_id, msg=f"Plan execution completed")
             
             observation, vision_states = self.observing(current_task.proof_of_completion)
-
+            note.current_step().observation = observation
             self.callback.info(
                 agent_id=self.workflow_instance_id,
                 progress=f"The {action_limit+1} action finished",
@@ -66,7 +75,7 @@ class ReactExcute(BaseLLMBackend, BaseWorker):
                     self.stm(self.workflow_instance_id)["note"] = note
                     return {"all_tasks_finished": False}
             else:
-                note.current_step().vision = vision_states
+                note.current_task().steps.append(Step(vision=vision_states))
                 note.save()
                 self.stm(self.workflow_instance_id)["note"] = note
                 self.callback.send_block(agent_id=self.workflow_instance_id, msg=f"The current task is not completed. Reason: {observation.reason}")
@@ -79,7 +88,7 @@ class ReactExcute(BaseLLMBackend, BaseWorker):
         note: Note = self.stm(self.workflow_instance_id)["note"]
 
         sys_prompt = PromptTemplate.from_file(CURRENT_PATH.joinpath("reasoning_prompt.prompt"), role="system")
-        sys_prompt = sys_prompt.format(tools=self.tool_manager.generate_prompt())
+        sys_prompt = sys_prompt.format(tools=self.tool_manager.generate_prompt(), previous_steps=note.current_task().summarize_steps(include_unfinished=True))
 
         user_prompt = [f"The current task is:{task}"]
         if observation:

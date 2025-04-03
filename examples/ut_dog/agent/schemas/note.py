@@ -18,13 +18,28 @@ class Step(BaseModel):
     execute_result: Optional[str] = Field(description="The result of the tool execution, describe what has been done.", default=None)
     tool_call: Optional[dict] = Field(description="The tool call details for this step", default=None)
     vision: List[VisionState] = Field(description="The current view of the robot, will be updated after the vision related tool is executed.", default=[])
+    observation: Optional[str] = Field(description="The observation after the step is executed.", default=None)
 
 class Task(BaseModel):
     instruction: str = Field(description="The instruction of the step, describe what should be done. Should be simple and feasible")
     steps: List[Step] = Field(description="The information about the steps that need to be executed to complete the task. Only return empty list when generating.", default=[])
     proof_of_completion: str = Field(description="Used to determine whether the step has been completed. It should be able to verify based on the current view of the robot. ")
-    is_done: bool = Field(description="Whether the step is done.", default=False)
+    is_done: bool = Field(description="Whether the task is done.", default=False)
 
+    def summarize_steps(self, include_unfinished: bool = False):
+        result = []
+        for i, step in enumerate(self.steps):
+            step_result = f"***Step {i+1}***\n"
+            if step.execute_result and not include_unfinished:
+                continue
+            if step.plan:
+                step_result += f"The plan is: {step.plan}\n"
+            if step.execute_result:
+                step_result += f"The execution result is: {step.execute_result}\n"
+            if step.observation:
+                step_result += f"The observation after the step is: {step.observation}\n"
+            result.append(step_result)
+        return "\n".join(result)
 
 class Note(BaseModel):
     origin_vision: List[VisionState] = Field(description="The initial environment of the robot. Only return empty list when generating.", default=[])
