@@ -53,7 +53,8 @@ class Communicate(BaseLLMBackend, BaseTool):
             result = ChatResult.model_validate_json(self.llm.generate(records=context, response_format=ChatResult)["choices"][0]["message"]["content"])
             logging.info(f"Chat result: {json.dumps(result.model_dump(), indent=4, ensure_ascii=False)}")
             if result.is_done:
-                self.callback.send_block(agent_id=self.workflow_instance_id, msg=result.chat)
+                # self.callback.send_block(agent_id=self.workflow_instance_id, msg=result.chat)
+                self.audio_output(output_prompt=result.chat)
                 return {
                     "code": 0,
                     "msg": "success",
@@ -96,4 +97,18 @@ class Communicate(BaseLLMBackend, BaseTool):
         
         # Format the response to match the expected structure
         return response_data
+    
+    def audio_output(self, output_prompt: str) -> Dict:
+        import requests
+        import json
         
+        output_url = "http://localhost:6666/voice/output"
+        output_payload = {
+            "msg": output_prompt,
+            "agent_id": self.workflow_instance_id
+        }
+        output_response = requests.post(
+            output_url,
+            headers={"Content-Type": "application/json"},
+            data=json.dumps(output_payload)
+        )

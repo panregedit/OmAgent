@@ -5,6 +5,7 @@ from omagent_core.models.llms.base import BaseLLMBackend
 from omagent_core.tool_system.manager import ToolManager
 from omagent_core.models.llms.schemas import Message
 from agent.tools.get_surrounding_image import GetSurroundingImage
+from agent.tools.get_image_sample import GetImageSample
 from omagent_core.models.llms.prompt.prompt import PromptTemplate
 from pydantic import BaseModel, Field
 from agent.schemas.note import Note, Step
@@ -127,9 +128,14 @@ class ReactExcute(BaseLLMBackend, BaseWorker):
         with open(CURRENT_PATH.joinpath("observing_prompt.prompt"), "r") as f:
             sys_prompt = f.read()
 
-        get_surrounding_image = GetSurroundingImage()
-        get_surrounding_image._parent = self
-        res = get_surrounding_image._run(memorize=False)
+        # get_surrounding_image = GetSurroundingImage()
+        # get_surrounding_image._parent = self
+        # res = get_surrounding_image._run(memorize=False)
+
+        get_image_sample = GetImageSample()
+        get_image_sample._parent = self
+        res = get_image_sample._run(memorize=False)
+
         if res["code"] != 0:
             raise Exception("Get surrounding image failed")
         

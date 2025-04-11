@@ -1,0 +1,1 @@
+{"pidfile": "/tmp/tmprlxftmiy/redis.pid", "unixsocket": "/tmp/tmprlxftmiy/redis.socket", "dbdir": "/home/unitree/zl/proj/OmAgent/examples/ut_dog", "dbfilename": "shared_redis.db"}
