@@ -1,15 +1,15 @@
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
-from pydantic import field_validator
+from typing import Any, Dict
 import time
-import math
+import requests
+from urllib.parse import urljoin
 
 from omagent_core.utils.logger import logging
 from omagent_core.utils.registry import registry
 from omagent_core.tool_system.base import ArgSchema, BaseTool
-from .utils.channel_manager import ChannelFactoryManager
 
 CURRENT_PATH = Path(__file__).parents[0]
+SUFFIX = "/signalservice/robot/move"
 
 ARGSCHEMA = {
     "vx": {
@@ -42,18 +42,14 @@ class Move(BaseTool):
 
     args_schema: ArgSchema = ArgSchema(**ARGSCHEMA)
     description: str = """This tool is used to control the robot dog to move. You can make the robot dog move forward, backward, left, right, and rotate by manipulating the vx, vy, and vyaw parameters."""
-    network_interface_name: Optional[str] = "eth0"
-
-    def __init__(self, **data: Any) -> None:
-        super().__init__(**data)
-        self.sport_client = None
-
-    @field_validator("network_interface_name")
-    @classmethod
-    def network_interface_name_validator(cls, network_interface_name: Union[str, None]) -> Union[str, None]:
-        if network_interface_name == None:
-            raise ValueError("network interface name is not provided.")
-        return network_interface_name
+    request_url: str
+    
+    def _request_move(self, vx: float, vy: float, vyaw: float) -> Dict[str, Any]:
+        url = urljoin(self.request_url, SUFFIX)
+        response = requests.post(url, json={"vx": vx, "vy": vy, "vyaw": vyaw}).json()
+        if response["code"] != '0':
+            raise Exception(f"Robot move failed: {response['message']}")
+        return response
 
     def _run(
         self,
@@ -62,9 +58,6 @@ class Move(BaseTool):
         vyaw: float = 0
     ) -> Dict[str, Any]:
         """Control the Go2 to move."""
-        if self.sport_client is None:
-            ChannelFactoryManager.initialize(0, self.network_interface_name)
-            self.sport_client = ChannelFactoryManager.get_sport_client()
         try:
             remaining_vx = abs(vx)
             remaining_vy = abs(vy)
@@ -80,7 +73,7 @@ class Move(BaseTool):
                     current_vy = min(1, remaining_vy) * vy_direction if remaining_vy > 0 else 0
                     current_vyaw = min(1.5, remaining_vyaw) * vyaw_direction if remaining_vyaw > 0 else 0
                     
-                    code = self.sport_client.Move(current_vx, current_vy, current_vyaw)
+                    code = self._request_move(current_vx, current_vy, current_vyaw)
                     if code != 0:
                         raise Exception(f"code: {code}")
                     
@@ -90,7 +83,7 @@ class Move(BaseTool):
                     
                     time.sleep(1)
             else:
-                code = self.sport_client.Move(vx, vy, vyaw)
+                code = self._request_move(vx, vy, vyaw)
                 
             if code != 0:
                 raise Exception(f"code: {code}")

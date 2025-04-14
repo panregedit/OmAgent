@@ -5,15 +5,17 @@ prompts:
     - template: "agent/workers/react/tool_user_prompt.prompt"
       role: "user"
 tools:
-    # - name: Move
-    #   network_interface_name: "eth0"
+    - name: Move
+      request_url: "http://172.16.33.229:18080"
     # - name: GetImageSample
-    #   network_interface_name: "eth0"
+    #   request_url: "http://172.16.33.229:18080"
     # - name: GetSurroundingImage
-    #   network_interface_name: "eth0"
-    # - StartNavigation
+    #   request_url: "http://172.16.33.229:18080"
+    # - name: StartNavigation
+    #   request_url: "http://172.16.33.229:18080"
     - name: Communicate
       llm: ${sub|text_res}
+      request_url: "http://172.16.33.229:8080"
     # - name: TurnLeft
     #   network_interface_name: "eth0"
     # - name: TurnRight

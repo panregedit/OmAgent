@@ -1,3 +1,4 @@
 name: ReactExcute
 llm: ${sub|gpt}
 tool_manager: ${sub|ut_dog_tools}
+bot_request_url: "http://172.16.33.229:18080"

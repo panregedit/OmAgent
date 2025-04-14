@@ -30,6 +30,8 @@ class ObservationResult(BaseModel):
 @registry.register_worker()
 class ReactExcute(BaseLLMBackend, BaseWorker):
     tool_manager: ToolManager
+    bot_request_url: str
+    
     def _run(self, *args, **kwargs):
         # Read user input through configured input interface
         observation = None
@@ -128,11 +130,11 @@ class ReactExcute(BaseLLMBackend, BaseWorker):
         with open(CURRENT_PATH.joinpath("observing_prompt.prompt"), "r") as f:
             sys_prompt = f.read()
 
-        # get_surrounding_image = GetSurroundingImage()
+        # get_surrounding_image = GetSurroundingImage(request_url=self.bot_request_url)
         # get_surrounding_image._parent = self
         # res = get_surrounding_image._run(memorize=False)
 
-        get_image_sample = GetImageSample()
+        get_image_sample = GetImageSample(request_url=self.bot_request_url)
         get_image_sample._parent = self
         res = get_image_sample._run(memorize=False)
 

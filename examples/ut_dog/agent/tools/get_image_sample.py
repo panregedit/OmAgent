@@ -1,6 +1,9 @@
 from pathlib import Path
+from urllib.parse import urljoin
 from typing import Any, Dict, Optional, Union, List
 import traceback
+import requests
+import base64
 
 import cv2
 import numpy as np
@@ -10,10 +13,11 @@ from PIL import Image
 from omagent_core.utils.logger import logging
 from omagent_core.utils.registry import registry
 from omagent_core.tool_system.base import ArgSchema, BaseTool
-from .utils.channel_manager import ChannelFactoryManager
 from ..schemas.note import Note, VisionState, Step
 
 CURRENT_PATH = Path(__file__).parents[0]
+
+SNAPSHOT_SUFFIX = "/signalservice/video/color_depth_snapshot"
 
 ARGSCHEMA = {
 }
@@ -31,30 +35,27 @@ class GetImageSample(BaseTool):
 
     args_schema: ArgSchema = ArgSchema(**ARGSCHEMA)
     description: str = "Get the image sample of the current view of the robot dog."
-    network_interface_name: Optional[str] = "eth0"
-
-    def model_post_init(self, __context: Any) -> None:
-        self.video_client = None
-
-    @field_validator("network_interface_name")
-    @classmethod
-    def network_interface_name_validator(cls, network_interface_name: Union[str, None]) -> Union[str, None]:
-        if network_interface_name == None:
-            raise ValueError("network interface name is not provided.")
-        return network_interface_name
+    request_url: str
+    
+    def _request_snapshot(self) -> Dict[str, Any]:
+        # url = f"{self.request_url}{SNAPSHOT_SUFFIX}"
+        url = urljoin(self.request_url, SNAPSHOT_SUFFIX)
+        response = requests.get(url).json()
+        if response["code"] != '0':
+            raise Exception(f"Robot snapshot failed [{response['code']}]: {response['message']}")
+        rgb_width = response['data'].get("rgb_width")
+        rgb_height = response['data'].get("rgb_height")
+        rgb_base64 = response['data'].get("rgb_data")
+        
+        if rgb_base64 and rgb_width and rgb_height:
+            rgb_bytes = base64.b64decode(rgb_base64)
+            rgb_image = np.frombuffer(rgb_bytes, dtype=np.uint8).reshape((rgb_height, rgb_width, 3))
+            return Image.fromarray(rgb_image)
+        else:
+            raise Exception("Failed to get snapshot")
     
     def take_shot(self):
-        if self.video_client is None:
-            ChannelFactoryManager.initialize(0, self.network_interface_name)
-            self.video_client = ChannelFactoryManager.get_video_client()
-        code, data = self.video_client.GetImageSample()
-        if code != 0:
-            raise Exception(f"Get image sample failed: {code}")
-
-        image_array = np.frombuffer(bytes(data), np.uint8)
-        image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        pil_image = Image.fromarray(image)
+        pil_image = self._request_snapshot()
         
         # Resize image to have longest edge as 512 pixels while maintaining aspect ratio
         width, height = pil_image.size
